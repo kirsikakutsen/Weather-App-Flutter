@@ -4,6 +4,7 @@ import 'package:weater_app/core/constants/colors.dart';
 import 'package:weater_app/domain/repository/weather_repository.dart';
 import 'package:weater_app/models/weather_model.dart';
 import 'package:intl/intl.dart';
+import 'package:weater_app/services/location_service.dart'; // NEW
 
 class ForecastScreen extends StatefulWidget {
   const ForecastScreen({super.key});
@@ -13,18 +14,34 @@ class ForecastScreen extends StatefulWidget {
 }
 
 class _ForecastScreenState extends State<ForecastScreen> {
-  late Future<WeatherResponse> futureWeather; // Changed type
+  late Future<WeatherResponse> futureWeather;
+  final LocationService _locationService = LocationService();
+
+  String _city = "Loading location...";
 
   @override
   void initState() {
     super.initState();
     futureWeather = fetchWeather();
+
+    _locationService.getCurrentPosition().then((position) async {
+      if (position != null) {
+        final city = await _locationService.getCityFromPosition(position);
+        setState(() {
+          _city = city;
+        });
+      } else {
+        setState(() {
+          _city = "Location unavailable";
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FutureBuilder<WeatherResponse>( // Changed type
+      body: FutureBuilder<WeatherResponse>(
         future: futureWeather,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -32,19 +49,16 @@ class _ForecastScreenState extends State<ForecastScreen> {
           } else if (snapshot.hasError) {
             return Center(
               child: Text(
-                'Error: ${snapshot.error}', 
-                style: const TextStyle(color: Colors.white)
-              )
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white),
+              ),
             );
           } else if (snapshot.hasData) {
             final weather = snapshot.data!;
-            
-            // Get current temperature from currentConditions or first hour
-            final currentTemp = weather.currentConditions?.temp?.toStringAsFixed(1) ?? 
-                              weather.days?.first.hours?.first.temp?.toStringAsFixed(1) ?? 
-                              'N/A';
-            
-            // Get hourly data from first day
+            final currentTemp =
+                weather.currentConditions?.temp?.toStringAsFixed(1) ??
+                weather.days?.first.hours?.first.temp?.toStringAsFixed(1) ??
+                'N/A';
             final hourly = weather.days?.first.hours?.toList() ?? [];
 
             return Container(
@@ -62,7 +76,10 @@ class _ForecastScreenState extends State<ForecastScreen> {
                   _buildTimeLocationDate(),
                   Padding(
                     padding: const EdgeInsets.only(top: 30),
-                    child: SvgPicture.asset("assets/images/ic_cloudy.svg", width: 250),
+                    child: SvgPicture.asset(
+                      "assets/images/ic_cloudy.svg",
+                      width: 250,
+                    ),
                   ),
                   Text(
                     "$currentTemp°",
@@ -86,28 +103,54 @@ class _ForecastScreenState extends State<ForecastScreen> {
   }
 
   Widget _buildTimeLocationDate() {
-    final time = DateTime.now();
-    final formattedTime = DateFormat("HH:mm").format(time);
-    final formattedDate = DateFormat.yMMMMd().format(time);
-    return Column(
-      children: [
-        Padding(
-          padding: EdgeInsets.only(top: 80.0),
-          child: Text(formattedDate, style: TextStyle(color: AppColors.textPrimary, fontSize: 20)),
-        ),
-        Text(formattedTime, style: TextStyle(color: AppColors.textPrimary, fontSize: 52, fontWeight: FontWeight.bold)),
-        const Text("Łódź, Poland", style: TextStyle(color: AppColors.textPrimary, fontSize: 20)),
-      ],
+    return StreamBuilder(
+      stream: Stream.periodic(const Duration(milliseconds: 200)),
+      builder: (context, snapshot) {
+        final now = DateTime.now();
+        final formattedDate = DateFormat('MMMMEEEEd').format(now);
+        final formattedTime = DateFormat('HH:mm').format(now);
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 80.0),
+              child: Text(
+                formattedDate,
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 20),
+              ),
+            ),
+            Text(
+              formattedTime,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 52,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              _city,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 20),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildHourlyWeather(List<Hours> hours) {
     return Column(
       children: [
-        const Text("Today", style: TextStyle(color: AppColors.textPrimary, fontSize: 20)),
+        const Text(
+          "Today",
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 20),
+        ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 70),
-          child: Divider(color: AppColors.textPrimary, thickness: 1, height: 34),
+          child: Divider(
+            color: AppColors.textPrimary,
+            thickness: 1,
+            height: 34,
+          ),
         ),
         SizedBox(
           height: 100,
@@ -123,12 +166,15 @@ class _ForecastScreenState extends State<ForecastScreen> {
                   children: [
                     Text(
                       hour.datetime?.substring(0, 5) ?? "--:--",
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(10),
                       child: SvgPicture.asset(
-                        "assets/images/ic_cloudy.svg", // Optional: map conditions to icons
+                        "assets/images/ic_cloudy.svg",
                         width: 40,
                       ),
                     ),
