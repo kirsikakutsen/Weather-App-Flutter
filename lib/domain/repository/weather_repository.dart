@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:weater_app/models/weather_model.dart';
 import 'package:weater_app/services/location_service.dart';
-import 'package:geolocator/geolocator.dart';
 
 
 Future<WeatherResponse> fetchWeather(
