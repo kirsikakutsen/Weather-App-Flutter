@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 import 'package:weater_app/core/constants/colors.dart';
 import 'package:weater_app/domain/repository/weather_repository.dart';
 import 'package:weater_app/models/weather_model.dart';
-import 'package:intl/intl.dart';
-import 'package:weater_app/services/location_service.dart'; // NEW
+import 'package:weater_app/services/location_service.dart';
+import 'package:weater_app/utils/weather_icon_mapper.dart';
 
 class ForecastScreen extends StatefulWidget {
   const ForecastScreen({super.key});
@@ -15,27 +16,58 @@ class ForecastScreen extends StatefulWidget {
 
 class _ForecastScreenState extends State<ForecastScreen> {
   late Future<WeatherResponse> futureWeather;
-  final LocationService _locationService = LocationService();
-
+  final _locationService = LocationService();
   String _city = "Loading location...";
 
   @override
   void initState() {
     super.initState();
-    futureWeather = fetchWeather();
+    _initWeather();
+  }
 
-    _locationService.getCurrentPosition().then((position) async {
-      if (position != null) {
-        final city = await _locationService.getCityFromPosition(position);
-        setState(() {
-          _city = city;
-        });
-      } else {
-        setState(() {
-          _city = "Location unavailable";
-        });
-      }
-    });
+  void _initWeather() async {
+    final position = await _locationService.getCurrentPosition();
+    if (position != null) {
+      final city = await _locationService.getCityFromPosition(position);
+      setState(() => _city = city);
+      futureWeather = fetchWeather(
+        position.latitude,
+        position.longitude,
+        _locationService,
+      );
+    } else {
+      futureWeather = Future.error("Weather not available");
+      setState(() => _city = "Location unavailable");
+    }
+  }
+
+  LinearGradient _getBackgroundGradient() {
+    final hour = DateTime.now().hour;
+    if (hour >= 23 || hour < 5) {
+      return const LinearGradient(
+        colors: [AppColors.nightBottom, AppColors.nightTop],
+        begin: Alignment.bottomRight,
+        end: Alignment.topLeft,
+      );
+    } else if (hour >= 5 && hour < 12) {
+      return const LinearGradient(
+        colors: [AppColors.morningBottom, AppColors.morningTop],
+        begin: Alignment.bottomRight,
+        end: Alignment.topLeft,
+      );
+    } else if (hour >= 12 && hour < 16) {
+      return const LinearGradient(
+        colors: [AppColors.afternoonBottom, AppColors.afternoonTop],
+        begin: Alignment.bottomRight,
+        end: Alignment.topLeft,
+      );
+    } else {
+      return const LinearGradient(
+        colors: [AppColors.eveningBottom, AppColors.eveningTop],
+        begin: Alignment.bottomRight,
+        end: Alignment.topLeft,
+      );
+    }
   }
 
   @override
@@ -50,38 +82,39 @@ class _ForecastScreenState extends State<ForecastScreen> {
             return Center(
               child: Text(
                 'Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.black),
               ),
             );
-          } else if (snapshot.hasData) {
-            final weather = snapshot.data!;
-            final currentTemp =
-                weather.currentConditions?.temp?.toStringAsFixed(1) ??
-                weather.days?.first.hours?.first.temp?.toStringAsFixed(1) ??
-                'N/A';
-            final hourly = weather.days?.first.hours?.toList() ?? [];
+          } else if (!snapshot.hasData) {
+            return const Center(child: Text("No data found"));
+          }
 
-            return Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomRight,
-                  end: Alignment.topLeft,
-                  stops: [0.0, 0.8],
-                  colors: [Color(0xFFE5A28C), Color(0xFF5EABCA)],
+          final weather = snapshot.data!;
+          final currentTemp =
+              weather.currentConditions?.temp?.toStringAsFixed(1) ??
+              weather.days?.first.hours?.first.temp?.toStringAsFixed(1) ??
+              'N/A';
+
+          return Container(
+            decoration: BoxDecoration(gradient: _getBackgroundGradient()),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 30),
+                  child: WeatherHeader(city: _city),
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildTimeLocationDate(),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 30),
-                    child: SvgPicture.asset(
-                      "assets/images/ic_cloudy.svg",
-                      width: 250,
+                SizedBox(
+                  height: 180,
+                  child: SvgPicture.asset(
+                    getWeatherIconAsset(
+                      weather.currentConditions?.icon ?? 'default',
                     ),
                   ),
-                  Text(
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
                     "$currentTemp°",
                     style: const TextStyle(
                       color: AppColors.textPrimary,
@@ -89,55 +122,69 @@ class _ForecastScreenState extends State<ForecastScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  _buildHourlyWeather(hourly),
-                  const SizedBox(height: 7),
-                ],
-              ),
-            );
-          } else {
-            return const Center(child: Text("No data found"));
-          }
+                ),
+                HourlyWeatherList(hours: weather.days?.first.hours ?? []),
+                const SizedBox(height: 7),
+              ],
+            ),
+          );
         },
       ),
     );
   }
+}
 
-  Widget _buildTimeLocationDate() {
+class WeatherHeader extends StatelessWidget {
+  final String city;
+
+  const WeatherHeader({required this.city, super.key});
+
+  String getDate() => DateFormat('MMMMEEEEd').format(DateTime.now());
+  String getTime() => DateFormat('HH:mm').format(DateTime.now());
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder(
       stream: Stream.periodic(const Duration(milliseconds: 200)),
-      builder: (context, snapshot) {
-        final now = DateTime.now();
-        final formattedDate = DateFormat('MMMMEEEEd').format(now);
-        final formattedTime = DateFormat('HH:mm').format(now);
-
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 80.0),
-              child: Text(
-                formattedDate,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 20),
+      builder:
+          (_, __) => Column(
+            children: [
+              const SizedBox(height: 80),
+              Text(
+                getDate(),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 20,
+                ),
               ),
-            ),
-            Text(
-              formattedTime,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 52,
-                fontWeight: FontWeight.bold,
+              Text(
+                getTime(),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 52,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            Text(
-              _city,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 20),
-            ),
-          ],
-        );
-      },
+              Text(
+                city,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 20,
+                ),
+              ),
+            ],
+          ),
     );
   }
+}
 
-  Widget _buildHourlyWeather(List<Hours> hours) {
+class HourlyWeatherList extends StatelessWidget {
+  final List<Hours> hours;
+
+  const HourlyWeatherList({required this.hours, super.key});
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
         const Text(
@@ -173,9 +220,11 @@ class _ForecastScreenState extends State<ForecastScreen> {
                     ),
                     Padding(
                       padding: const EdgeInsets.all(10),
-                      child: SvgPicture.asset(
-                        "assets/images/ic_cloudy.svg",
-                        width: 40,
+                      child: SizedBox(
+                        height: 40,
+                        child: SvgPicture.asset(
+                          getWeatherIconAsset(hour.icon ?? 'default'),
+                        ),
                       ),
                     ),
                     Text(

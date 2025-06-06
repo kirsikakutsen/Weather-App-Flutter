@@ -46,12 +46,14 @@ class Hours {
   double? temp;
   List<String>? preciptype;
   String? conditions;
+  String? icon; // <-- Add this line
 
   Hours({
     this.datetime,
     this.temp,
     this.preciptype,
     this.conditions,
+    this.icon, // <-- Add this
   });
 
   Hours.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class Hours {
     }
 
     conditions = json['conditions'];
+    icon = json['icon']; // <-- Add this
   }
 }
 
@@ -73,12 +76,14 @@ class CurrentConditions {
   double? temp;
   String? preciptype;
   String? conditions;
+  String? icon;
 
   CurrentConditions({
     this.datetime,
     this.temp,
     this.preciptype,
     this.conditions,
+    this.icon,
   });
 
   CurrentConditions.fromJson(Map<String, dynamic> json) {
@@ -86,5 +91,6 @@ class CurrentConditions {
     temp = (json['temp'] != null) ? (json['temp'] as num).toDouble() : null;
     preciptype = json['preciptype']?.toString();
     conditions = json['conditions'];
+    icon = json['icon']?.toString();
   }
 }

@@ -23,7 +23,8 @@ class LocationService {
       final placemarks =
           await placemarkFromCoordinates(position.latitude, position.longitude);
       final placemark = placemarks.first;
-      return "${placemark.locality}, ${placemark.country}";
+      var city = placemark.locality ?? placemark.subLocality ?? "Unknown";
+      return "$city, ${placemark.country}";
     } catch (e) {
       return "Location not available";
     }
