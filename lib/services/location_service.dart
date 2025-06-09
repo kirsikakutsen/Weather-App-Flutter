@@ -17,7 +17,7 @@ class LocationService {
     return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.low);
   }
-
+  
   Future<String> getCityFromPosition(Position position) async {
     try {
       final placemarks =

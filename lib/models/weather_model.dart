@@ -1,6 +1,6 @@
-// weather_model.dart
+
 class WeatherResponse {
-  double? tzoffset; // Changed from int to double
+  double? tzoffset; 
   List<Days>? days;
   CurrentConditions? currentConditions;
 
@@ -46,14 +46,14 @@ class Hours {
   double? temp;
   List<String>? preciptype;
   String? conditions;
-  String? icon; // <-- Add this line
+  String? icon; 
 
   Hours({
     this.datetime,
     this.temp,
     this.preciptype,
     this.conditions,
-    this.icon, // <-- Add this
+    this.icon, 
   });
 
   Hours.fromJson(Map<String, dynamic> json) {
@@ -67,7 +67,7 @@ class Hours {
     }
 
     conditions = json['conditions'];
-    icon = json['icon']; // <-- Add this
+    icon = json['icon']; 
   }
 }
 

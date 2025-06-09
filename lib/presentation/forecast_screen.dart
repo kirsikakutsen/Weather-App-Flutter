@@ -153,7 +153,7 @@ class WeatherHeader extends StatelessWidget {
   final String city;
   final double tzOffset;
 
-  WeatherHeader({required this.city, required this.tzOffset, super.key});
+  const WeatherHeader({required this.city, required this.tzOffset, super.key});
 
   DateTime get offsetTime =>
       DateTime.now().add(Duration(hours: tzOffset.toInt()));
@@ -163,9 +163,8 @@ class WeatherHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: Stream.periodic(const Duration(milliseconds: 200)),
-      builder:
-          (_, __) => Column(
+      stream: Stream.periodic(const Duration(seconds: 1)),
+      builder:(_, __) => Column(
             children: [
               const SizedBox(height: 80),
               Text(
@@ -222,44 +221,50 @@ class HourlyWeatherList extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: hours.length,
-            itemBuilder: (context, index) {
-              final hour = hours[index];
-              return SizedBox(
-                width: 100,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      hour.datetime?.substring(0, 5) ?? "--:--",
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: SizedBox(
-                        height: 40,
-                        child: SvgPicture.asset(
-                          getWeatherIconAsset(hour.icon ?? 'default'),
-                        ),
-                      ),
-                    ),
-                    Text(
-                      "${hour.temp?.toStringAsFixed(0) ?? "--"}°",
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+            itemBuilder: (context, index) => _hourlyWeatherListItemBuilder(context, index, hours),
           ),
         ),
       ],
     );
   }
 }
+
+_hourlyWeatherListItemBuilder(
+    BuildContext context,
+    int index,
+    List<Hours> hours,
+  ) {
+    final hour = hours[index];
+    return SizedBox(
+      width: 100,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            hour.datetime?.substring(0, 5) ?? "--:--",
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: SizedBox(
+              height: 40,
+              child: SvgPicture.asset(
+                getWeatherIconAsset(hour.icon ?? 'default'),
+              ),
+            ),
+          ),
+          Text(
+            "${hour.temp?.toStringAsFixed(0) ?? "--"}°",
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
