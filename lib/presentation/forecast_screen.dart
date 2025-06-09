@@ -14,8 +14,39 @@ class ForecastScreen extends StatefulWidget {
   State<ForecastScreen> createState() => _ForecastScreenState();
 }
 
+LinearGradient _getBackgroundGradient(double tzOffset) {
+  DateTime offsetTime = DateTime.now().add(Duration(hours: tzOffset.toInt()));
+  final hour = offsetTime.hour;
+
+  if (hour >= 23 || hour < 5) {
+    return const LinearGradient(
+      colors: [AppColors.nightBottom, AppColors.nightTop],
+      begin: Alignment.bottomRight,
+      end: Alignment.topLeft,
+    );
+  } else if (hour >= 5 && hour < 12) {
+    return const LinearGradient(
+      colors: [AppColors.morningBottom, AppColors.morningTop],
+      begin: Alignment.bottomRight,
+      end: Alignment.topLeft,
+    );
+  } else if (hour >= 12 && hour < 16) {
+    return const LinearGradient(
+      colors: [AppColors.afternoonBottom, AppColors.afternoonTop],
+      begin: Alignment.bottomRight,
+      end: Alignment.topLeft,
+    );
+  } else {
+    return const LinearGradient(
+      colors: [AppColors.eveningBottom, AppColors.eveningTop],
+      begin: Alignment.bottomRight,
+      end: Alignment.topLeft,
+    );
+  }
+}
+
 class _ForecastScreenState extends State<ForecastScreen> {
-  late Future<WeatherResponse> futureWeather;
+  Future<WeatherResponse>? futureWeather;
   final _locationService = LocationService();
   String _city = "Loading location...";
 
@@ -29,44 +60,21 @@ class _ForecastScreenState extends State<ForecastScreen> {
     final position = await _locationService.getCurrentPosition();
     if (position != null) {
       final city = await _locationService.getCityFromPosition(position);
-      setState(() => _city = city);
-      futureWeather = fetchWeather(
+      final weatherFuture = fetchWeather(
         position.latitude,
         position.longitude,
         _locationService,
       );
-    } else {
-      futureWeather = Future.error("Weather not available");
-      setState(() => _city = "Location unavailable");
-    }
-  }
 
-  LinearGradient _getBackgroundGradient() {
-    final hour = DateTime.now().hour;
-    if (hour >= 23 || hour < 5) {
-      return const LinearGradient(
-        colors: [AppColors.nightBottom, AppColors.nightTop],
-        begin: Alignment.bottomRight,
-        end: Alignment.topLeft,
-      );
-    } else if (hour >= 5 && hour < 12) {
-      return const LinearGradient(
-        colors: [AppColors.morningBottom, AppColors.morningTop],
-        begin: Alignment.bottomRight,
-        end: Alignment.topLeft,
-      );
-    } else if (hour >= 12 && hour < 16) {
-      return const LinearGradient(
-        colors: [AppColors.afternoonBottom, AppColors.afternoonTop],
-        begin: Alignment.bottomRight,
-        end: Alignment.topLeft,
-      );
+      setState(() {
+        _city = city;
+        futureWeather = weatherFuture;
+      });
     } else {
-      return const LinearGradient(
-        colors: [AppColors.eveningBottom, AppColors.eveningTop],
-        begin: Alignment.bottomRight,
-        end: Alignment.topLeft,
-      );
+      setState(() {
+        _city = "Location unavailable";
+        futureWeather = Future.error("Weather not available");
+      });
     }
   }
 
@@ -76,71 +84,81 @@ class _ForecastScreenState extends State<ForecastScreen> {
       body: FutureBuilder<WeatherResponse>(
         future: futureWeather,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.black),
-              ),
-            );
-          } else if (!snapshot.hasData) {
-            return const Center(child: Text("No data found"));
-          }
-
-          final weather = snapshot.data!;
-          final currentTemp =
-              weather.currentConditions?.temp?.toStringAsFixed(1) ??
-              weather.days?.first.hours?.first.temp?.toStringAsFixed(1) ??
-              'N/A';
-
           return Container(
-            decoration: BoxDecoration(gradient: _getBackgroundGradient()),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 30),
-                  child: WeatherHeader(city: _city),
-                ),
-                SizedBox(
-                  height: 180,
-                  child: SvgPicture.asset(
-                    getWeatherIconAsset(
-                      weather.currentConditions?.icon ?? 'default',
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    "$currentTemp°",
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 76,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                HourlyWeatherList(hours: weather.days?.first.hours ?? []),
-                const SizedBox(height: 7),
-              ],
+            decoration: BoxDecoration(
+              gradient:
+                  (snapshot.connectionState == ConnectionState.done &&
+                          snapshot.hasData)
+                      ? _getBackgroundGradient(snapshot.data?.tzoffset ?? 0.0)
+                      : _getBackgroundGradient(0),
             ),
+            child: _buildWeatherContent(snapshot),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildWeatherContent(AsyncSnapshot<WeatherResponse> snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting ||
+        futureWeather == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.textPrimary),
+      );
+    } else if (snapshot.hasError) {
+      return Center(
+        child: Text(
+          snapshot.error.toString(),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 20),
+        ),
+      );
+    }
+
+    final weather = snapshot.data!;
+    final currentTemp =
+        weather.currentConditions?.temp?.toStringAsFixed(0) ?? "--";
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 30),
+          child: WeatherHeader(city: _city, tzOffset: weather.tzoffset ?? 0.0),
+        ),
+        SizedBox(
+          height: 180,
+          child: SvgPicture.asset(
+            getWeatherIconAsset(weather.currentConditions?.icon),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(
+            "$currentTemp°",
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 76,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        HourlyWeatherList(hours: weather.days?.first.hours ?? []),
+        const SizedBox(height: 7),
+      ],
     );
   }
 }
 
 class WeatherHeader extends StatelessWidget {
   final String city;
+  final double tzOffset;
 
-  const WeatherHeader({required this.city, super.key});
+  WeatherHeader({required this.city, required this.tzOffset, super.key});
 
-  String getDate() => DateFormat('MMMMEEEEd').format(DateTime.now());
-  String getTime() => DateFormat('HH:mm').format(DateTime.now());
+  DateTime get offsetTime =>
+      DateTime.now().add(Duration(hours: tzOffset.toInt()));
+  String getDate() => DateFormat('MMMMEEEEd').format(offsetTime);
+  String getTime() => DateFormat('HH:mm').format(offsetTime);
 
   @override
   Widget build(BuildContext context) {
