@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:weater_app/core/constants/colors.dart';
@@ -16,8 +15,8 @@ class ForecastScreen extends StatefulWidget {
 }
 
 LinearGradient _getBackgroundGradient(double tzOffset) {
-  DateTime offsetTime = DateTime.now().add(Duration(hours: tzOffset.toInt()));
-  final hour = offsetTime.hour;
+  DateTime locationTime = DateTime.now().toUtc().add(Duration(hours: tzOffset.toInt()));
+  final hour = locationTime.hour;
 
   if (hour >= 23 || hour < 5) {
     return const LinearGradient(
@@ -156,10 +155,13 @@ class WeatherHeader extends StatelessWidget {
 
   const WeatherHeader({required this.city, required this.tzOffset, super.key});
 
-  DateTime get offsetTime =>
-      DateTime.now().add(Duration(hours: tzOffset.toInt()));
-  String getDate() => DateFormat('MMMMEEEEd').format(offsetTime);
-  String getTime() => DateFormat('HH:mm').format(offsetTime);
+  DateTime get locationTime {
+    final utcNow = DateTime.now().toUtc();
+    return utcNow.add(Duration(hours: tzOffset.toInt()));
+  }
+  
+  String getDate() => DateFormat('MMMMEEEEd').format(locationTime);
+  String getTime() => DateFormat('HH:mm').format(locationTime);
 
   @override
   Widget build(BuildContext context) {

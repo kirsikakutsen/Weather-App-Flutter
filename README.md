@@ -22,8 +22,8 @@ A weather application built with Flutter that provides real-time weather informa
 ### Location & Time
 - **Automatic location detection** using device GPS
 - **City and country display** with reverse geocoding
-- **Real-time clock** 
-- **Date display** 
+- **Location-based real-time clock** that shows the current time in the selected location's timezone
+- **Date display** based on the location's timezone 
 
 ### Hourly Forecast
 - **24-hour weather forecast** with hourly breakdown
