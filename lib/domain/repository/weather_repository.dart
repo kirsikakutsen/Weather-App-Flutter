@@ -10,10 +10,9 @@ Future<WeatherResponse> fetchWeather(
   double longitude,
   LocationService locationService,
 ) async {
-  final baseUrl = dotenv.env['BASE_URL'];
   final apiKey = dotenv.env['API_KEY'];
   final uriString =
-      "$baseUrl/VisualCrossingWebServices/rest/services/timeline/$latitude%2C$longitude?unitGroup=metric&include=hours%2Ccurrent&key=$apiKey&contentType=json";
+      "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/$latitude%2C$longitude?unitGroup=metric&include=hours%2Ccurrent&key=$apiKey&contentType=json";
   final uri = Uri.parse(uriString);
 
   final response = await http.get(uri);
