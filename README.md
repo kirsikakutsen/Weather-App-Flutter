@@ -2,6 +2,11 @@
 
 A weather application built with Flutter that provides real-time weather information with dynamic backgrounds and hourly forecasts.
 
+<img width="300" alt="Simulator Screenshot - iPhone 16 Plus - 2025-07-20 at 12 20 32" src="https://github.com/user-attachments/assets/07d085c1-551a-4dc4-8fd2-929e67f8967d" />
+<img width="300" alt="Screenshot_1753007051" src="https://github.com/user-attachments/assets/4d7ee0f6-5828-46a0-b4d7-0d711de991ef" />
+<img width="300" alt="Screenshot_1753008586" src="https://github.com/user-attachments/assets/4adcf61f-445e-4f8c-a22d-73faf3bad2b6" />
+<img width="300" alt="Screenshot_1753009647" src="https://github.com/user-attachments/assets/c4f2590b-1d75-4eae-ad14-8a04e99f1dd1" />
+
 ## Features
 
 ### Current Weather
@@ -23,7 +28,6 @@ A weather application built with Flutter that provides real-time weather informa
 - **Automatic location detection** using device GPS
 - **City and country display** with reverse geocoding
 - **Location-based real-time clock** that shows the current time in the selected location's timezone
-- **Date display** based on the location's timezone 
 
 ### Hourly Forecast
 - **24-hour weather forecast** with hourly breakdown
