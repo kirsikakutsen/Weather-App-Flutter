@@ -19,7 +19,7 @@ String getWeatherIconAsset(String? icon) {
     case "partly-cloudy-night":
       return "assets/images/partly_cloudy_night.svg";
     case "clear-day":
-      return "assets/images/clear_day.svg";
+      return "assets/images/sunny.svg";
     case "clear-night":
       return "assets/images/clear_night.svg";
     case "thunder-rain":

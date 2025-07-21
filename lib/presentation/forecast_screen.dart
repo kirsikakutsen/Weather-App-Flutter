@@ -115,8 +115,9 @@ class _ForecastScreenState extends State<ForecastScreen> {
     }
 
     final weather = snapshot.data!;
-    final currentTemp =
-        weather.currentConditions?.temp?.toStringAsFixed(0) ?? "--";
+    final currentHour = _getCurrentHour(weather.days?.first.hours ?? [], weather.tzoffset ?? 0.0);
+    final currentTemp = currentHour?.temp?.toStringAsFixed(0) ?? weather.currentConditions?.temp?.toStringAsFixed(0) ?? "--";
+    final currentIcon = currentHour?.icon ?? weather.currentConditions?.icon;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -128,7 +129,7 @@ class _ForecastScreenState extends State<ForecastScreen> {
         SizedBox(
           height: 180,
           child: SvgPicture.asset(
-            getWeatherIconAsset(weather.currentConditions?.icon),
+            getWeatherIconAsset(currentIcon),
           ),
         ),
         Padding(
@@ -142,11 +143,35 @@ class _ForecastScreenState extends State<ForecastScreen> {
             ),
           ),
         ),
-        HourlyWeatherList(hours: weather.days?.first.hours ?? []),
+        HourlyWeatherList(hours: weather.days?.first.hours ?? [], tzOffset: weather.tzoffset ?? 0.0),
         const SizedBox(height: 7),
       ],
     );
   }
+}
+
+Hours? _getCurrentHour(List<Hours> hours, double tzOffset) {
+  if (hours.isEmpty) return null;
+  
+  final locationTime = DateTime.now().toUtc().add(Duration(hours: tzOffset.toInt()));
+  final currentHour = locationTime.hour;
+  
+  for (final hour in hours) {
+    if (hour.datetime == null) continue;
+    
+    try {
+      final utcTime = DateTime.parse(hour.datetime!);
+      final hourLocationTime = utcTime.add(Duration(hours: tzOffset.toInt()));
+      
+      if (hourLocationTime.hour == currentHour) {
+        return hour;
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+  
+  return hours.first;
 }
 
 class WeatherHeader extends StatelessWidget {
@@ -200,8 +225,9 @@ class WeatherHeader extends StatelessWidget {
 
 class HourlyWeatherList extends StatelessWidget {
   final List<Hours> hours;
+  final double tzOffset;
 
-  const HourlyWeatherList({required this.hours, super.key});
+  const HourlyWeatherList({required this.hours, required this.tzOffset, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +250,7 @@ class HourlyWeatherList extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: hours.length,
-            itemBuilder: (context, index) => _hourlyWeatherListItemBuilder(context, index, hours),
+            itemBuilder: (context, index) => _hourlyWeatherListItemBuilder(context, index, hours, tzOffset),
           ),
         ),
       ],
@@ -236,15 +262,29 @@ _hourlyWeatherListItemBuilder(
     BuildContext context,
     int index,
     List<Hours> hours,
+    double tzOffset,
   ) {
     final hour = hours[index];
+    
+    String getLocationTime() {
+      if (hour.datetime == null) return "--:--";
+      
+      try {
+        final utcTime = DateTime.parse(hour.datetime!);
+        final locationTime = utcTime.add(Duration(hours: tzOffset.toInt()));
+        return DateFormat('HH:mm').format(locationTime);
+      } catch (e) {
+        return hour.datetime?.substring(0, 5) ?? "--:--";
+      }
+    }
+    
     return SizedBox(
       width: 100,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            hour.datetime?.substring(0, 5) ?? "--:--",
+            getLocationTime(),
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 14,
